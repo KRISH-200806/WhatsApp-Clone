@@ -4,12 +4,11 @@ import toast from "react-hot-toast";
 import { useSelector, useDispatch } from "react-redux";
 import { sendMessage } from "../redux/chat/chatSlice";
 
-
 const MessageInput = () => {
   const [text, setText] = useState("");
   const [imagePreview, setImagePreview] = useState(null);
   const fileInputRef = useRef(null);
-  const typingTimeoutRef = useRef(null);
+  
 
   const dispatch = useDispatch();
   const { selectedUser } = useSelector((state) => state.chat);
@@ -37,19 +36,7 @@ const MessageInput = () => {
     setText(e.target.value);
     if (!selectedUser) return;
 
-    dispatch(
-      sendTypingStatus({ receiverId: selectedUser._id, isTyping: true })
-    );
-
-    if (typingTimeoutRef.current) {
-      clearTimeout(typingTimeoutRef.current);
-    }
-
-    typingTimeoutRef.current = setTimeout(() => {
-      dispatch(
-        sendTypingStatus({ receiverId: selectedUser._id, isTyping: false })
-      );
-    }, 3000);
+   
   };
 
   const handleSendMessage = async (e) => {

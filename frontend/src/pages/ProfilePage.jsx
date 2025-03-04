@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
-// Import Redux action
+ // Import Redux action
 import { Camera, Mail, User } from "lucide-react";
 import { updateProfile } from "../redux/auth/authSlice";
 

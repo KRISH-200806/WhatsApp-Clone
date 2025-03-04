@@ -5,10 +5,9 @@ import MessageInput from "./MessageInput";
 import ChatHeader from "./ChatHeader";
 import formatMessageTime from "../lib/utils";
 import {
-  getMessages,
+  getUsers,
 
 } from "../redux/chat/chatSlice";
-
 
 const ChatContainer = () => {
   const dispatch = useDispatch();
@@ -20,8 +19,7 @@ const ChatContainer = () => {
 
   useEffect(() => {
     if (selectedUser?._id) {
-      dispatch(getMessages(selectedUser._id));
-      
+      dispatch(getUsers());
     }
   }, [dispatch, selectedUser]);
 

@@ -3,6 +3,7 @@ import chatReducer from "./chat/chatSlice";
 import authReducer from "./auth/authSlice";
 import socketMiddleware from "./socketMiddleware";
 
+
 const store = configureStore({
   reducer: {
     chat: chatReducer,

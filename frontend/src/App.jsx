@@ -23,7 +23,7 @@ const App = () => {
     dispatch(checkAuth()); // Dispatch checkAuth on mount
   }, [dispatch]);
 
-  console.log({ authUser });
+
 
   if (isCheckingAuth && !authUser)
     return (

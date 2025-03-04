@@ -1,9 +1,8 @@
 import { useEffect, useState } from "react";
 import { useSelector, useDispatch } from "react-redux";
 import { Users } from "lucide-react";
-
+import {  getUsers, setSelectedUser } from "../redux/chat/chatSlice";
 import SidebarSkeleton from "./skton/Sidebarskton";
-import { getUsers, setSelectedUser } from "../redux/chat/chatSlice";
 
 const Sidebar = () => {
   const dispatch = useDispatch();
@@ -11,7 +10,7 @@ const Sidebar = () => {
     (state) => state.chat
   );
   const { onlineUsers } = useSelector((state) => state.auth);
-  console.log(onlineUsers,users);
+
   const [showOnlineOnly, setShowOnlineOnly] = useState(false);
 
   useEffect(() => {
@@ -21,7 +20,7 @@ const Sidebar = () => {
   const filteredUsers = showOnlineOnly
     ? users.filter((user) => onlineUsers.includes(user._id))
     : users;
- console.log(filteredUsers)
+
   if (isUsersLoading) return <SidebarSkeleton />;
 
   return (

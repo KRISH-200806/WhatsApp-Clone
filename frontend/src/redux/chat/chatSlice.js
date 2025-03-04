@@ -19,6 +19,7 @@ export const getMessages = createAsyncThunk(
   async (userId) => {
     try {
       const res = await axiosInstance.get(`/message/get/${userId}`);
+     
       return res.data;
     } catch (error) {
       toast.error(error.response.data.message);
@@ -31,18 +32,19 @@ export const sendMessage = createAsyncThunk(
   "chat/sendMessage",
   async (messageData, { getState }) => {
     try {
-      const { selectedUser, messages } = getState().chat;
+      const { selectedUser } = getState().chat;
       const res = await axiosInstance.post(
         `/message/send/${selectedUser._id}`,
         messageData
       );
-      return [...messages, res.data];
+      return res.data; // केवल नया संदेश ही रिटर्न करें
     } catch (error) {
-      toast.error(error.response.data.message);
+      toast.error(error.response?.data?.message || "Message sending failed");
       throw error;
     }
   }
 );
+
 
 const chatSlice = createSlice({
   name: "chat",
@@ -72,9 +74,9 @@ const chatSlice = createSlice({
         state.messages = action.payload;
         state.isMessagesLoading = false;
       })
-      .addCase(sendMessage.fulfilled, (state, action) => {
-        state.messages = action.payload;
-      });
+       .addCase(sendMessage.fulfilled, (state, action) => {
+         state.messages.push(action.payload); // सीधे नया message जोड़ें
+       });
   },
 });
 

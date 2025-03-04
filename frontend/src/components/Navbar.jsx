@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
-// Import logout action
+ // Import logout action
 import { LogOut, MessageSquare, Settings, User } from "lucide-react";
 import { logout } from "../redux/auth/authSlice";
 

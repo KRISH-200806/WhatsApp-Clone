@@ -1,18 +1,16 @@
-import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
+import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import axiosInstance from "../../lib/axios";
-import toast from "react-hot-toast";
-import io from "socket.io-client";
- 
-const BASE_URL = "http://localhost:5050";
+import { toast } from "react-hot-toast";
+import { io } from "socket.io-client";
 
-
-export const checkAuth = createAsyncThunk("auth/checkAuth",
+// Async Thunks
+export const checkAuth = createAsyncThunk(
+  "auth/checkAuth",
   async (_, { dispatch }) => {
     try {
       const res = await axiosInstance.get("/user/check");
-      dispatch(checkAuth(res.data._id));
-      
-      return res.data._id;
+      dispatch(connectSocket(res.data._id));
+      return res.data;
     } catch (error) {
       console.error("Error in checkAuth:", error);
       return null;
@@ -20,7 +18,8 @@ export const checkAuth = createAsyncThunk("auth/checkAuth",
   }
 );
 
-export const signup = createAsyncThunk("auth/signup",
+export const signup = createAsyncThunk(
+  "auth/signup",
   async (data, { dispatch }) => {
     try {
       const res = await axiosInstance.post("/user/signup", data);
@@ -79,61 +78,71 @@ export const updateProfile = createAsyncThunk(
   }
 );
 
+// Auth Slice
 const authSlice = createSlice({
   name: "auth",
   initialState: {
     authUser: null,
+    isCheckingAuth: true,
     isSigningUp: false,
     isLoggingIn: false,
     isUpdatingProfile: false,
-    isCheckingAuth: true,
-    onlineUsers: [],
     socket: null,
+    onlineUsers: [],
   },
   reducers: {
     connectSocket: (state, action) => {
       if (!action.payload || state.socket?.connected) return;
 
-      const socket = io(BASE_URL, { query: { userId: action.payload } });
-      state.socket = socket;
-      socket.on("getOlineUsers", (userIds) => {
-        console.log("dsd",userIds);
-        state.onlineUsers = userIds;
+      const socket = io("http://localhost:5050", {
+        query: { userId: action.payload },
       });
 
-    
+      // Dynamically import store and dispatch setOnlineUsers
+      socket.on("getOnlineUsers", (userIds) => {
+        import("../store").then(({ default: store }) => {
+          store.dispatch(setOnlineUsers(userIds));
+        });
+      });
+
+      state.socket = socket;
     },
     disconnectSocket: (state) => {
       state.socket?.disconnect();
       state.socket = null;
     },
+    setOnlineUsers: (state, action) => {
+      state.onlineUsers = action.payload;
+    },
   },
   extraReducers: (builder) => {
-      builder
-        .addCase(checkAuth.fulfilled, (state, action) => {
-          state.authUser = action.payload;
-          state.isCheckingAuth = false;
-        })
-        .addCase(checkAuth.rejected, (state) => {
-          (state.authUser = null), (state.isCheckingAuth = false);
-        })
-        .addCase(signup.fulfilled, (state, action) => {
-          state.authUser = action.payload;
-          state.isSigningUp = false;
-        })
-        .addCase(login.fulfilled, (state, action) => {
-          state.authUser = action.payload;
-          state.isLoggingIn = false;
-        })
-        .addCase(logout.fulfilled, (state) => {
-          state.authUser = null;
-        })
-        .addCase(updateProfile.fulfilled, (state, action) => {
-          state.authUser = action.payload;
-          state.isUpdatingProfile = false;
-        });
+    builder
+      .addCase(checkAuth.fulfilled, (state, action) => {
+        state.authUser = action.payload;
+        state.isCheckingAuth = false;
+      })
+      .addCase(checkAuth.rejected, (state) => {
+        state.authUser = null;
+        state.isCheckingAuth = false;
+      })
+      .addCase(signup.fulfilled, (state, action) => {
+        state.authUser = action.payload;
+        state.isSigningUp = false;
+      })
+      .addCase(login.fulfilled, (state, action) => {
+        state.authUser = action.payload;
+        state.isLoggingIn = false;
+      })
+      .addCase(logout.fulfilled, (state) => {
+        state.authUser = null;
+      })
+      .addCase(updateProfile.fulfilled, (state, action) => {
+        state.authUser = action.payload;
+        state.isUpdatingProfile = false;
+      });
   },
 });
 
+export const { connectSocket, disconnectSocket, setOnlineUsers } =
+  authSlice.actions;
 export default authSlice.reducer;
-export const { connectSocket, disconnectSocket } = authSlice.actions;

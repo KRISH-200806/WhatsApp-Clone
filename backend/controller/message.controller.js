@@ -1,43 +1,44 @@
 const MessageModel = require("../model/message.model");
 const UserModel = require("../model/user.model");
 const { getReceiverSocketId, io } = require("../socket/server");
-
+const cloudinary = require("cloudinary").v2;
 
 const getUsersForSidebar = async (req, res) => {
   try {
-    const loggedInUserId = req.user._id;
-    const users = await UserModel.find({
-      _id: { $ne: loggedInUserId },
-    }).select("-password");
+    const loggedInUserId = req.user?._id;
+    if (!loggedInUserId) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
 
-        const usersWithLastMessage = await Promise.all(
-          users.map(async (user) => {
-            const lastMessage = await MessageModel.findOne({
-              $or: [
-                { senderId: loggedInUserId, receiverId: user._id },
-                { senderId: user._id, receiverId: loggedInUserId },
-              ],
-            })
-              .sort({ updatedAt: -1 }) // Get the latest updated message
-              .select("text updatedAt");
+    const users = await UserModel.find({ _id: { $ne: loggedInUserId } }).select(
+      "-password"
+    );
 
-            return {
-              ...user.toObject(),
-              lastMessage: lastMessage || null,
-            };
-          })
-        );
+    const usersWithLastMessage = await Promise.all(
+      users.map(async (user) => {
+        const lastMessage = await MessageModel.findOne({
+          $or: [
+            { senderId: loggedInUserId, receiverId: user._id },
+            { senderId: user._id, receiverId: loggedInUserId },
+          ],
+        })
+          .sort({ updatedAt: -1 })
+          .select("text updatedAt");
 
-        // Sort users based on the latest message timestamp
-        usersWithLastMessage.sort((a, b) => {
-          if (!a.lastMessage) return 1; // Push users without messages to the bottom
-          if (!b.lastMessage) return -1;
-          return (
-            new Date(b.lastMessage.updatedAt) -
-            new Date(a.lastMessage.updatedAt)
-          );
-        });
+        return {
+          ...user.toObject(),
+          lastMessage: lastMessage || null,
+        };
+      })
+    );
 
+    usersWithLastMessage.sort((a, b) => {
+      if (!a.lastMessage) return 1;
+      if (!b.lastMessage) return -1;
+      return (
+        new Date(b.lastMessage.updatedAt) - new Date(a.lastMessage.updatedAt)
+      );
+    });
 
     res.status(200).json(usersWithLastMessage);
   } catch (error) {
@@ -49,14 +50,17 @@ const getUsersForSidebar = async (req, res) => {
 const getMessages = async (req, res) => {
   try {
     const { id: userToChatId } = req.params;
-    const myId = req.user._id;
+    const myId = req.user?._id;
+    if (!myId) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
 
     const messages = await MessageModel.find({
       $or: [
         { senderId: myId, receiverId: userToChatId },
         { senderId: userToChatId, receiverId: myId },
       ],
-    });
+    }).sort({ createdAt: 1 });
 
     res.status(200).json(messages);
   } catch (error) {
@@ -69,11 +73,20 @@ const sendMessage = async (req, res) => {
   try {
     const { text, image } = req.body;
     const { id: receiverId } = req.params;
-    const senderId = req.user._id;
+    const senderId = req.user?._id;
 
-    let imageUrl;
+    if (!senderId) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+    if (!receiverId) {
+      return res.status(400).json({ error: "Receiver ID is required" });
+    }
+    if (!text && !image) {
+      return res.status(400).json({ error: "Message cannot be empty" });
+    }
+
+    let imageUrl = "";
     if (image) {
-      // Upload base64 image to cloudinary
       const uploadResponse = await cloudinary.uploader.upload(image);
       imageUrl = uploadResponse.secure_url;
     }
@@ -84,7 +97,6 @@ const sendMessage = async (req, res) => {
       text,
       image: imageUrl,
     });
-
     await newMessage.save();
 
     const receiverSocketId = getReceiverSocketId(receiverId);
